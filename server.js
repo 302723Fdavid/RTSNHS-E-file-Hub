@@ -112,22 +112,32 @@ app.post("/login", async (req, res) => {
   const users = getUsers();
   const user = users.find(u => u.username === username);
 
+  console.log("LOGIN ATTEMPT:", username);
+  console.log("PASSWORD ENTERED:", password);
+  console.log("USER FOUND:", user);
+
   if (!user) {
+    console.log("MATCH RESULT: USER NOT FOUND");
     return res.json({ success: false, message: "Invalid login" });
   }
 
   let match = false;
 
-  // Support both plain text and bcrypt passwords
+  // Support both plain-text and bcrypt passwords
   if (
-    user.password.startsWith("$2a$") ||
-    user.password.startsWith("$2b$") ||
-    user.password.startsWith("$2y$")
+    typeof user.password === "string" &&
+    (
+      user.password.startsWith("$2a$") ||
+      user.password.startsWith("$2b$") ||
+      user.password.startsWith("$2y$")
+    )
   ) {
     match = await bcrypt.compare(password, user.password);
   } else {
-    match = password === user.password;
+    match = password === String(user.password);
   }
+
+  console.log("MATCH RESULT:", match);
 
   if (!match) {
     return res.json({ success: false, message: "Invalid login" });
@@ -136,6 +146,8 @@ app.post("/login", async (req, res) => {
   req.session.loggedIn = true;
   req.session.username = user.username;
   req.session.role = user.role;
+
+  console.log("LOGIN SUCCESS:", user.username);
 
   res.json({
     success: true,
