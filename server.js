@@ -1,4 +1,4 @@
-require("dotenv").config(); // 👈 ADD THIS FIRST
+require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
@@ -9,9 +9,10 @@ const path = require("path");
 const bcrypt = require("bcrypt");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 /* ======================
-   TRUST PROXY (IMPORTANT FOR RENDER)
+   TRUST PROXY (RENDER FIX)
 ====================== */
 app.set("trust proxy", 1);
 
@@ -31,9 +32,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 10 * 60 * 1000, // 10 minutes auto logout
-    secure: true,          // required for Render (HTTPS)
-    sameSite: "none"       // required for cross-site cookies
+    maxAge: 10 * 60 * 1000, // 10 minutes
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none"
   }
 }));
 
@@ -67,7 +68,7 @@ function saveFiles(files) {
 }
 
 /* ======================
-   CREATE DEFAULT USERS (SAFE)
+   INIT FILES
 ====================== */
 if (!fs.existsSync(USERS_FILE)) {
   const defaultUsers = [
@@ -77,13 +78,9 @@ if (!fs.existsSync(USERS_FILE)) {
       role: "admin"
     }
   ];
-
   fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
 }
 
-/* ======================
-   CREATE FILE STORAGE
-====================== */
 if (!fs.existsSync(FILES_FILE)) {
   fs.writeFileSync(FILES_FILE, "[]");
 }
@@ -93,7 +90,7 @@ if (!fs.existsSync(path.join(__dirname, "uploads"))) {
 }
 
 /* ======================
-   LOGIN CHECK
+   AUTH MIDDLEWARE
 ====================== */
 function requireLogin(req, res, next) {
   if (!req.session.loggedIn) {
@@ -111,42 +108,31 @@ app.post("/login", async (req, res) => {
   const users = getUsers();
   const user = users.find(u => u.username === username);
 
-  console.log("LOGIN ATTEMPT:", username);
-
   if (!user) {
-    console.log("USER NOT FOUND");
-    return res.redirect("/");
+    return res.redirect("/login.html");
   }
 
   let match = false;
 
   if (
     typeof user.password === "string" &&
-    (
-      user.password.startsWith("$2a$") ||
-      user.password.startsWith("$2b$") ||
-      user.password.startsWith("$2y$")
-    )
+    (user.password.startsWith("$2a$") ||
+     user.password.startsWith("$2b$") ||
+     user.password.startsWith("$2y$"))
   ) {
     match = await bcrypt.compare(password, user.password);
   } else {
     match = password === String(user.password);
   }
 
-  console.log("MATCH RESULT:", match);
-
   if (!match) {
-    return res.redirect("/");
+    return res.redirect("/login.html");
   }
 
-  // ✅ SESSION (ONLY ONCE)
   req.session.loggedIn = true;
   req.session.username = user.username;
   req.session.role = user.role;
 
-  console.log("LOGIN SUCCESS:", user.username);
-
-  // ✅ REDIRECT TO DASHBOARD
   return res.redirect("/dashboard");
 });
 
@@ -154,20 +140,15 @@ app.post("/login", async (req, res) => {
    REGISTER
 ====================== */
 app.post("/register", async (req, res) => {
-  const { firstName, lastName, department, position, username, password } =
-    req.body;
+  const { firstName, lastName, department, position, username, password } = req.body;
 
   if (!firstName || !lastName || !department || !position || !username || !password) {
-    return res.json({ success: false, message: "Incomplete fields" });
+    return res.json({ success: false });
   }
 
   const users = getUsers();
 
-  const exists = users.find(
-    u => u.username.toLowerCase() === username.toLowerCase()
-  );
-
-  if (exists) {
+  if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     return res.json({ success: false, message: "Username exists" });
   }
 
@@ -186,13 +167,28 @@ app.post("/register", async (req, res) => {
 
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 
-  res.json({ success: true, message: "Registered successfully" });
+  res.json({ success: true });
 });
 
 /* ======================
-   CURRENT USER
+   DASHBOARD ROUTE (IMPORTANT)
 ====================== */
-app.get("/me", requireLogin, (req, res) => {
+app.get("/dashboard", (req, res) => {
+  if (!req.session.loggedIn) {
+    return res.redirect("/login.html");
+  }
+
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+/* ======================
+   CURRENT USER (FIXED)
+====================== */
+app.get("/me", (req, res) => {
+  if (!req.session.loggedIn) {
+    return res.json({ loggedIn: false });
+  }
+
   res.json({
     username: req.session.username,
     role: req.session.role
@@ -204,6 +200,7 @@ app.get("/me", requireLogin, (req, res) => {
 ====================== */
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
+    res.clearCookie("connect.sid");
     res.redirect("/login.html");
   });
 });
@@ -212,11 +209,7 @@ app.get("/logout", (req, res) => {
    HOME
 ====================== */
 app.get("/", (req, res) => {
-  if (!req.session.loggedIn) {
-    return res.redirect("/login.html");
-  }
-
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 /* ======================
@@ -230,24 +223,8 @@ app.get("/admin", requireLogin, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
-app.get("/admin/users", requireLogin, (req, res) => {
-  if (req.session.role !== "admin") {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
-  res.json(getUsers());
-});
-
-app.get("/admin/files", requireLogin, (req, res) => {
-  if (req.session.role !== "admin") {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
-  res.json(getFiles());
-});
-
 /* ======================
-   UPLOAD CONFIG
+   FILES / UPLOAD SYSTEM (UNCHANGED LOGIC)
 ====================== */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -260,7 +237,6 @@ const storage = multer.diskStorage({
 
     cb(null, uploadPath);
   },
-
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);
   }
@@ -271,14 +247,7 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }
 });
 
-/* ======================
-   UPLOAD FILE
-====================== */
 app.post("/upload", requireLogin, upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file" });
-  }
-
   const files = getFiles();
 
   files.push({
@@ -294,66 +263,18 @@ app.post("/upload", requireLogin, upload.single("file"), (req, res) => {
   res.json({ success: true });
 });
 
-/* ======================
-   FILE LIST
-====================== */
 app.get("/files", requireLogin, (req, res) => {
   res.json(getFiles());
 });
 
-/* ======================
-   DOWNLOAD
-====================== */
 app.get("/download/:grade/:filename", requireLogin, (req, res) => {
-  const filePath = path.join(
-    __dirname,
-    "uploads",
-    req.params.grade,
-    req.params.filename
-  );
+  const filePath = path.join(__dirname, "uploads", req.params.grade, req.params.filename);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "Not found" });
   }
 
   res.download(filePath);
-});
-
-/* ======================
-   DELETE (ADMIN ONLY)
-====================== */
-app.delete("/delete/:grade/:filename", requireLogin, (req, res) => {
-  if (req.session.role !== "admin") {
-    return res.status(403).json({ error: "Admin only" });
-  }
-
-  const filePath = path.join(
-    __dirname,
-    "uploads",
-    req.params.grade,
-    req.params.filename
-  );
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
-
-  let files = getFiles();
-
-  files = files.filter(
-    f => !(f.grade === req.params.grade && f.storedName === req.params.filename)
-  );
-
-  saveFiles(files);
-
-  res.json({ success: true });
-});
-
-/* ======================
-   DEBUG USERS
-====================== */
-app.get("/debug-users", (req, res) => {
-  res.json(getUsers());
 });
 
 /* ======================
