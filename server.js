@@ -111,9 +111,6 @@ app.post("/login", async (req, res) => {
 
   const users = getUsers();
   const user = users.find(u => u.username === username);
-console.log("LOGIN ATTEMPT:", username);
-console.log("USERS FOUND:", users.length);
-console.log("FOUND USER:", user);
 
   if (!user) {
     return res.json({ success: false, message: "Invalid login" });
@@ -121,7 +118,7 @@ console.log("FOUND USER:", user);
 
   let match = false;
 
-  // Supports both plain-text and bcrypt passwords
+  // Support both plain text and bcrypt passwords
   if (
     user.password.startsWith("$2a$") ||
     user.password.startsWith("$2b$") ||
