@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RTSNHS Teacher Registration</title>
+
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f4f6f9;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:100vh;
+      margin:0;
+      padding:20px;
+    }
+
+    .register-box{
+      width:500px;
+      background:white;
+      padding:30px;
+      border-radius:10px;
+      box-shadow:0 0 10px rgba(0,0,0,0.15);
+    }
+
+    h2{
+      text-align:center;
+      margin-bottom:20px;
+    }
+
+    input{
+      width:100%;
+      padding:10px;
+      margin-top:10px;
+      box-sizing:border-box;
+    }
+
+    button{
+      width:100%;
+      padding:10px;
+      margin-top:15px;
+      border:none;
+      border-radius:5px;
+      background:#2563eb;
+      color:white;
+      cursor:pointer;
+      font-size:15px;
+    }
+
+    button:hover{
+      background:#1d4ed8;
+    }
+
+    #msg{
+      margin-top:15px;
+      color:red;
+      font-weight:bold;
+      text-align:center;
+    }
+
+    a{
+      text-decoration:none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="register-box">
+
+  <h2>👩‍🏫 RTSNHS Teacher Registration</h2>
+
+  <input type="text" id="firstName" placeholder="First Name" required>
+
+  <input type="text" id="middleName" placeholder="Middle Name (Optional)">
+
+  <input type="text" id="lastName" placeholder="Last Name" required>
+
+  <input type="text" id="department" placeholder="Department" required>
+
+  <input type="text" id="position" placeholder="Position" required>
+
+  <input type="text" id="adviserSection" placeholder="Adviser Section">
+
+  <input type="text" id="contactNumber" placeholder="Contact Number">
+
+  <input type="text" id="username" placeholder="Username" required>
+
+  <input type="password" id="password" placeholder="Password" required>
+
+  <button onclick="registerUser()">
+    Register
+  </button>
+
+  <p id="msg"></p>
+
+  <hr>
+
+  <a href="/login.html">
+    <button type="button">
+      Back to Login
+    </button>
+  </a>
+
+</div>
+
+<script>
+function registerUser() {
+
+  fetch("/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      firstName: document.getElementById("firstName").value,
+      middleName: document.getElementById("middleName").value,
+      lastName: document.getElementById("lastName").value,
+      department: document.getElementById("department").value,
+      position: document.getElementById("position").value,
+      adviserSection: document.getElementById("adviserSection").value,
+      contactNumber: document.getElementById("contactNumber").value,
+      username: document.getElementById("username").value,
+      password: document.getElementById("password").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    if(data.success){
+      alert("Teacher registered successfully!");
+      window.location.href = "/login.html";
+    }else{
+      document.getElementById("msg").innerText =
+        data.message || "Registration failed.";
+    }
+
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById("msg").innerText =
+      "Unable to connect to server.";
+  });
+}
+</script>
+
+</body>
+</html>
