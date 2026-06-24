@@ -11,12 +11,9 @@ const bcrypt = require("bcrypt");
 const app = express();
 
 /* ======================
-   IMPORTANT DEPLOY FIX
+   TRUST PROXY (IMPORTANT FOR RENDER)
 ====================== */
 app.set("trust proxy", 1);
-
-// 👇 NOW USING .env VALUE
-const PORT = process.env.PORT || 3000;
 
 /* ======================
    MIDDLEWARE
@@ -26,17 +23,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, // true only if HTTPS
-      sameSite: "lax"
-    }
-  })
-);
+/* ======================
+   SESSION CONFIG
+====================== */
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 10 * 60 * 1000, // 10 minutes auto logout
+    secure: true,          // required for Render (HTTPS)
+    sameSite: "none"       // required for cross-site cookies
+  }
+}));
 
 /* ======================
    FILE PATHS
