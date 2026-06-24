@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard - RTSNHS</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      background: #f4f6f9;
+    }
+
+    .header {
+      background: #111827;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .container {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    h3 {
+      margin-top: 0;
+    }
+
+    .item {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    .badge {
+      background: #2563eb;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>🧑‍💼 Admin Dashboard</h2>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+
+  <!-- USERS -->
+  <div class="card">
+    <h3>👤 Users</h3>
+    <div id="users"></div>
+  </div>
+
+  <!-- FILES -->
+  <div class="card">
+    <h3>📁 Uploaded Files</h3>
+    <div id="files"></div>
+  </div>
+
+</div>
+
+<script>
+
+function loadUsers() {
+  fetch("/admin/users", { credentials: "same-origin" })
+    .then(res => res.json())
+    .then(data => {
+      const box = document.getElementById("users");
+      box.innerHTML = "";
+
+      data.forEach(u => {
+        box.innerHTML += `
+          <div class="item">
+            👤 ${u.username}
+            <span class="badge">${u.role}</span>
+          </div>
+        `;
+      });
+    });
+}
+
+function loadFiles() {
+  fetch("/admin/files", { credentials: "same-origin" })
+    .then(res => res.json())
+    .then(data => {
+      const box = document.getElementById("files");
+      box.innerHTML = "";
+
+      data.forEach(f => {
+        box.innerHTML += `
+          <div class="item">
+            📄 ${f.originalName}<br>
+            <small>
+              Grade: ${f.grade} |
+              By: ${f.uploadedBy || "unknown"}
+            </small>
+          </div>
+        `;
+      });
+    });
+}
+
+function logout() {
+  window.location.href = "/logout";
+}
+
+loadUsers();
+loadFiles();
+
+</script>
+
+</body>
+</html>
