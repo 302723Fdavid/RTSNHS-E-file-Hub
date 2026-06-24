@@ -106,6 +106,9 @@ function requireLogin(req, res, next) {
 /* ======================
    LOGIN
 ====================== */
+/* ======================
+   LOGIN
+====================== */
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -116,7 +119,18 @@ app.post("/login", async (req, res) => {
     return res.json({ success: false, message: "Invalid login" });
   }
 
-  const match = await bcrypt.compare(password, user.password);
+  let match = false;
+
+  // Supports both plain-text and bcrypt passwords
+  if (
+    user.password.startsWith("$2a$") ||
+    user.password.startsWith("$2b$") ||
+    user.password.startsWith("$2y$")
+  ) {
+    match = await bcrypt.compare(password, user.password);
+  } else {
+    match = password === user.password;
+  }
 
   if (!match) {
     return res.json({ success: false, message: "Invalid login" });
