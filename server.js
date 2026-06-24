@@ -112,17 +112,14 @@ app.post("/login", async (req, res) => {
   const user = users.find(u => u.username === username);
 
   console.log("LOGIN ATTEMPT:", username);
-  console.log("PASSWORD ENTERED:", password);
-  console.log("USER FOUND:", user);
 
   if (!user) {
-    console.log("MATCH RESULT: USER NOT FOUND");
-    return res.json({ success: false, message: "Invalid login" });
+    console.log("USER NOT FOUND");
+    return res.redirect("/");
   }
 
   let match = false;
 
-  // Support both plain-text and bcrypt passwords
   if (
     typeof user.password === "string" &&
     (
@@ -139,20 +136,18 @@ app.post("/login", async (req, res) => {
   console.log("MATCH RESULT:", match);
 
   if (!match) {
-    return res.json({ success: false, message: "Invalid login" });
+    return res.redirect("/");
   }
 
+  // ✅ SESSION (ONLY ONCE)
   req.session.loggedIn = true;
   req.session.username = user.username;
   req.session.role = user.role;
 
   console.log("LOGIN SUCCESS:", user.username);
 
-  res.json({
-    success: true,
-    username: user.username,
-    role: user.role
-  });
+  // ✅ REDIRECT TO DASHBOARD
+  return res.redirect("/dashboard");
 });
 
 /* ======================
