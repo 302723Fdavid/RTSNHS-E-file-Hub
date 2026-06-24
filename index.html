@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RTSNHS File Hub</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+    }
+
+    .header {
+      background: #1e3a8a;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .logout-btn {
+      background: #ef4444;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    .sidebar {
+      width: 220px;
+      background: white;
+      padding: 15px;
+      border-right: 1px solid #ddd;
+    }
+
+    .sidebar button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border: none;
+      background: #e5e7eb;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    input[type="file"],
+    select,
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button.upload {
+      margin-top: 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .file-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .file-item a {
+      float: right;
+      color: #2563eb;
+      text-decoration: none;
+      margin-left: 10px;
+    }
+
+    .delete-btn {
+      float: right;
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>🏫 RTSNHS File Hub Dashboard</h1>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span id="userInfo"></span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h3>Menu</h3>
+    <button>📁 Dashboard</button>
+    <button>📤 Upload</button>
+    <button>📄 Files</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- UPLOAD -->
+    <div class="card">
+      <h3>Upload File</h3>
+
+      <input type="file" id="file">
+
+      <select id="grade">
+        <option value="Grade7">Grade 7</option>
+        <option value="Grade8">Grade 8</option>
+        <option value="Grade9">Grade 9</option>
+        <option value="Grade10">Grade 10</option>
+        <option value="Grade11">Grade 11</option>
+        <option value="Grade12">Grade 12</option>
+      </select>
+
+      <button class="upload" onclick="upload()">Upload</button>
+    </div>
+
+    <!-- FILES -->
+    <div class="card">
+      <h3>Files</h3>
+
+      <input
+        type="text"
+        id="search"
+        placeholder="🔍 Search files..."
+        onkeyup="loadFiles()"
+      >
+
+      <div id="list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+function upload() {
+  const fileInput = document.getElementById("file");
+
+  if (!fileInput.files[0]) {
+    alert("Please select a file.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  formData.append("grade", document.getElementById("grade").value);
+
+  fetch("/upload", {
+    method: "POST",
+    body: formData,
+    credentials: "same-origin"
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message || "Uploaded!");
+    loadFiles();
+  })
+  .catch(() => alert("Upload failed"));
+}
+
+
+function loadFiles() {
+  fetch("/files", {
+    credentials: "same-origin"
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    const search = document.getElementById("search").value.toLowerCase();
+
+    const filtered = data.filter(f =>
+      f.originalName.toLowerCase().includes(search)
+    );
+
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    filtered.forEach(f => {
+      list.innerHTML += `
+        <div class="file-item">
+          ${f.originalName}
+
+          <a href="/download/${f.grade}/${f.storedName}">
+            Download
+          </a>
+
+          <button class="delete-btn"
+            onclick="deleteFile('${f.grade}','${f.storedName}')">
+            Delete
+          </button>
+        </div>
+      `;
+    });
+
+  });
+}
+
+
+function deleteFile(grade, filename) {
+  if (!confirm("Delete this file?")) return;
+
+  fetch(`/delete/${grade}/${filename}`, {
+    method: "DELETE",
+    credentials: "same-origin"
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message);
+    loadFiles();
+  });
+}
+
+
+function logout() {
+  window.location.href = "/logout";
+}
+
+
+function loadUser() {
+  fetch("/me", { credentials: "same-origin" })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById("userInfo").innerText =
+      `${data.username} (${data.role})`;
+  })
+  .catch(() => {
+    document.getElementById("userInfo").innerText = "Guest";
+  });
+}
+
+
+loadUser();
+loadFiles();
+
+</script>
+
+</body>
+</html>
