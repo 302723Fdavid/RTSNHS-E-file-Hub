@@ -347,6 +347,13 @@ app.delete("/delete/:grade/:filename", requireLogin, (req, res) => {
 });
 
 /* ======================
+   DEBUG USERS
+====================== */
+app.get("/debug-users", (req, res) => {
+  res.json(getUsers());
+});
+
+/* ======================
    START SERVER
 ====================== */
 app.listen(PORT, () => {
