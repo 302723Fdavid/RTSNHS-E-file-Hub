@@ -106,14 +106,14 @@ function requireLogin(req, res, next) {
 /* ======================
    LOGIN
 ====================== */
-/* ======================
-   LOGIN
-====================== */
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   const users = getUsers();
   const user = users.find(u => u.username === username);
+console.log("LOGIN ATTEMPT:", username);
+console.log("USERS FOUND:", users.length);
+console.log("FOUND USER:", user);
 
   if (!user) {
     return res.json({ success: false, message: "Invalid login" });
